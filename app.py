@@ -10,7 +10,7 @@ st.set_page_config(page_title="🚀 AI Pricing Intelligence Pro", layout="wide")
 # --- LOAD THE SYSTEM BUNDLE ---
 @st.cache_resource
 def load_system():
-    # This reads the bundle containing your 76.4% normalized model
+    # This reads the bundle containing your stable 76% model
     with open('project_bundle.pkl', 'rb') as f:
         return pickle.load(f)
 
@@ -22,17 +22,15 @@ try:
     feats_i = bundle['features_intel']
     cat_options = bundle['category_options']
     brand_options = bundle['brand_options']
-    
-    # Knowledge Base Baselines
     cat_avgs = bundle.get('cat_averages', {})
     brand_avgs = bundle.get('brand_averages', {})
     
     if not cat_avgs:
-        st.error("⚠️ Data Sync Error: 'cat_averages' not found. Please re-run Block 15 in Colab.")
+        st.error("⚠️ Data Sync Error: Please re-run Block 15 in Colab.")
         st.stop()
         
 except Exception as e:
-    st.error(f"⚠️ System Error: {e}. Please ensure the latest 'project_bundle.pkl' is on GitHub.")
+    st.error(f"⚠️ System Error: {e}. Ensure 'project_bundle.pkl' is on GitHub.")
     st.stop()
 
 # --- SIDEBAR: THE CONTROL PANEL ---
@@ -62,11 +60,10 @@ else:
 st.title("🚀 AI-Powered Pricing Intelligence Dashboard")
 
 if st.button("✨ Generate AI Valuation", type="primary"):
-    # 1. Blueprint selection
     target_features = feats_v if engine_mode.startswith("🛡️") else feats_i
     input_dict = {col: 0.0 for col in target_features}
     
-    # 2. Map core features
+    # 1. Map core features
     input_dict['sales_volume'] = float(input_sales)
     input_dict['rating'] = float(input_rating)
     input_dict['ram_gb'] = float(ram)
@@ -74,20 +71,27 @@ if st.button("✨ Generate AI Valuation", type="primary"):
     input_dict['screen_inches'] = float(inches)
     input_dict['is_wireless'] = 1.0 if is_wireless else 0.0
 
-    # 3. IRONCLAD NORMALIZED LOGIC (The HP $11k Fix)
+    # 2. COMMON SENSE STRATEGY LOGIC (The TV & HP Fix)
     if not engine_mode.startswith("🛡️"):
-        # Neutralize Rating Noise: Prevents price cliffs
+        # Intrinsic Safety Net: Stops the $34 TV Issue
+        floor = 0.0
+        if input_category == "TV": floor = 150.0
+        elif input_category == "Laptop": floor = 250.0
+        elif input_category == "Monitor": floor = 80.0
+        input_dict['intrinsic_floor'] = floor
+
+        # Neutralize Rating Noise: Prevents price crashes
         input_dict['rating_neutral'] = 3.5 + (input_rating * 0.1) if input_rating > 3.5 else input_rating
         
-        # BALANCED POWER: 1.4 power and 10/12 coefficients keep 'Elite' prices realistic
+        # Balanced Power: 1.3 power and 8/10 coefficients for realistic 'Elite' pricing
         if 'premium_score' in target_features:
-            input_dict['premium_score'] = (pow(ram, 1.4) * 10) + (np.sqrt(storage) * 12)
+            input_dict['premium_score'] = (pow(ram, 1.3) * 8) + (np.sqrt(storage) * 10)
             
-        # ANTI-INFLATION CLIP: Caps the baseline impact at $1500 to stop brand-runaway prices
-        input_dict['cat_baseline'] = min(cat_avgs.get(input_category, 800), 1500)
-        input_dict['brand_baseline'] = min(brand_avgs.get(input_brand, 800), 1500)
+        # Anti-Inflation Clip: Caps baseline at $1200 to stop brand-runaway prices
+        input_dict['cat_baseline'] = max(min(cat_avgs.get(input_category, 500), 1200), 50)
+        input_dict['brand_baseline'] = max(min(brand_avgs.get(input_brand, 500), 1200), 50)
 
-    # 4. One-Hot Mapping
+    # 3. One-Hot Mapping
     if f"category_{input_category}" in input_dict: input_dict[f"category_{input_category}"] = 1.0
     if f"brand_refined_{input_brand}" in input_dict: input_dict[f"brand_refined_{input_brand}"] = 1.0
 
@@ -95,7 +99,7 @@ if st.button("✨ Generate AI Valuation", type="primary"):
         input_dict['actual_price'] = input_price
         input_dict['discount_percentage'] = input_discount
 
-    # 5. Prediction Engine
+    # 4. Prediction Engine
     final_input = pd.DataFrame([input_dict])[target_features]
     if engine_mode.startswith("🛡️"):
         prediction = model_v.predict(final_input)[0]
